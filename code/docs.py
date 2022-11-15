@@ -45,9 +45,9 @@ def extract_params(text):
         if new_param is None:
             # if no parameters have been found, try with modified regex
             new_param = param_re2.search(text)
-            if new_param is None:
-                # if we still cannot find any new parameters, break
-                break
+        if new_param is None:
+            # if we still cannot find any new parameters, break
+            break
         # extract text
         new_param = new_param.group()
 
@@ -196,11 +196,12 @@ def functions_html(funcs):
         html += f"""
         <li class="list-group-item" id="func_{name}">
           <h4>{name}</h4>
-          <kbd>{name}({", ".join([param for param in funcs[name]['parameters']])})</kbd><br><br>
+          <kbd>{name}({", ".join(list(funcs[name]['parameters']))})</kbd><br><br>
           <p>
             {funcs[name]['description']}
           </p>
         """
+
         if len(funcs[name]['parameters']) > 0:
             html += f"""
           <!-- Parameters table for {name} -->
@@ -225,14 +226,16 @@ def functions_html(funcs):
                 </td>
               </tr>
                 """
-            html += f"""
+            html += """
             </tbody>
           </table>
             """
-        html += f"""
+
+        html += """
         </li>
         <br>
         """
+
 
     html += """
         </ul>
@@ -263,11 +266,6 @@ def build_navbar(to_include, docs_dir='docs'):
     """
 
     raise ValueError("'build_navbar' script is not complete.")
-    # !!! TODO make the navbar code here
-    navbar = ""
-
-    # now save to templates within the docs directory
-    output(navbar, 'navbar.js', os.path.join(docs_dir, 'templates'))
 
 
 def build_readme(pages, markdown=None):
@@ -316,11 +314,7 @@ def build_page(module, devs, desc, classes="", funcs="", submodule=""):
     None.
     """
     # assign fullpath as list of module and (optionally) submodule
-    if submodule != "":
-        fullpath = [module, submodule]
-    else:
-        fullpath = [module]
-
+    fullpath = [module, submodule] if submodule != "" else [module]
     html = f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -419,13 +413,14 @@ def build_page(module, devs, desc, classes="", funcs="", submodule=""):
           </div>
             """
         # end class section
-        html += f"""
+        html += """
         </div>
       </div>
     </div>
 
     <br>
         """
+
 
     # add functions sections if functions exist
     if len(funcs) > 0:
@@ -475,7 +470,7 @@ def output(code, filename, path="docs"):
     file_types = ['.html', '.css', '.js']  # accepted file extensions
 
     # check if the filename given has an accepted extension from file_types
-    if not any([ext in filename for ext in file_types]):
+    if all(ext not in filename for ext in file_types):
         # if none found, we assume it is an html file
         filename += '.html'
 
@@ -487,9 +482,7 @@ def output(code, filename, path="docs"):
     if os.path.exists(os.path.join(path, filename)):
         overwrite = input(f"Warning: '{filename}' already exists, do you "
                            "want to overwrite? (Y/N)\n>>> ")
-        if overwrite.lower()[0] == 'y':
-            pass
-        else:
+        if overwrite.lower()[0] != 'y':
             # otherwise we just preappend 'auto' to the filename
             filename = f"auto_{filename}"
 
@@ -514,7 +507,7 @@ def bootstrap_download(docs_dir="docs"):
     -------
     None.
     """
-    
+
     # initialise Bootstrap components directory
     components = {
             'css': 'bootstrap.min.css',
@@ -563,14 +556,14 @@ class DocsBuilder:
                 os.path.join(docs_dir, 'templates/jquery.min.js')
             ]
         # check if any of required bootstrap files do not exist
-        if not any([os.path.exists(loc) for loc in bootstraps]):
+        if not any(os.path.exists(loc) for loc in bootstraps):
             # if any do not exist, we download all
             print("Not all required Bootstrap files found. "
                   "They will be downloaded to "
                   f"'{os.path.join(docs_dir, 'templates')}'.")
             # download bootstrap files
             bootstrap_download(docs_dir)
-            
+
         # compiled regex for finding import libraries
         #self.libs_re = re.compile(r"")
         # create compiled regex for finding classes and all that they contain (final character must be removed though)
@@ -611,9 +604,9 @@ class DocsBuilder:
             if new_class is None:
                 # see if class at end
                 new_class = self.class_end_re.search(code)
-                if new_class is None:
-                    # if no classes anywhere, break the loop
-                    break
+            if new_class is None:
+                # if no classes anywhere, break the loop
+                break
             code = code.replace(new_class.group()[:-1], "")  # remove from code
             # get class name
             name = re.compile(r"class .*:").search(new_class.group()).group()  # find class first line definition
@@ -665,27 +658,27 @@ class DocsBuilder:
         -------
         None.
         """
-        # we may end up with multiple pages, so initialise Dictionary
-        pages = {}
         # filename version of module
         filename = self.module.lower().replace(" ", "_")
-        # build top-level page
-        pages[filename] = \
-            build_page(self.module, self.devs, self.desc, self.classes,
-                       self.funcs)
+        pages = {
+            filename: build_page(
+                self.module, self.devs, self.desc, self.classes, self.funcs
+            )
+        }
+
         # iterate through classes (if any) and build page for each
         if len(self.classes) > 0:
             for c in self.classes:
                 print(f"{filename}.{c}")
                 print(c)
                 pages[f"{filename}.{c}"] = \
-                    build_page(self.module, self.devs,
+                        build_page(self.module, self.devs,
                     self.classes[c]['description'], classes="",
                     funcs=self.classes[c]['funcs'], submodule=c)
 
         # finally save all to file
-        for page in pages:
-            output(pages[page], page, path=path)
+        for page, value in pages.items():
+            output(value, page, path=path)
 
         # !!! TODO add top-level readme.html
         #readme = html_readme(pages)
